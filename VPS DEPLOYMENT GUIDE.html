@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KASI RULES AND DOCUMENTATIONS</title>
+  <link rel="stylesheet" href="https://stackedit.io/style.css" />
+</head>
+
+<body class="stackedit">
+  <div class="stackedit__html"><h1 id="kasi-ai-commerce-agent-vps-production-deployment--migrations-manual">Kasi AI Commerce Agent: VPS Production Deployment &amp; Migrations Manual</h1>
+<p>This guide outlines the exact, command-by-command steps required to stage, commit, and push updates from your local development machine, deploy and rebuild the stack on your Hostinger VPS, trace real-time log streams, and safely execute database migrations (including handling Alembic schema divergence).</p>
+<hr>
+<h2 id="🔒-1.-production-architecture-overview">🔒 1. Production Architecture Overview</h2>
+<p>Your live Hostinger VPS uses a high-security containerized network. The database container (<code>kasi_db</code>) runs PostgreSQL on port <code>5432</code> but has <strong>no public port exposure</strong>. It is 100% isolated inside the private Docker network (<code>kasi-network</code>).</p>
+<p>Development runs on a local <strong>SQLite</strong> database, while production runs on <strong>PostgreSQL</strong>. Database schema changes must be synchronized using Alembic migration scripts.</p>
+<hr>
+<h2 id="step-1-git-staging-committing--pushing-local-machine">Step 1: Git Staging, Committing &amp; Pushing (Local Machine)</h2>
+<p>Before deploying, make sure your local changes are committed and pushed to GitHub cleanly.</p>
+<h3 id="status-check">1.1 Status Check</h3>
+<p>Verify which files are modified or untracked:</p>
+<pre class=" language-bash"><code class="prism  language-bash"><span class="token function">git</span> status
+</code></pre>
+<h3 id="stage-changes">1.2 Stage Changes</h3>
+<p>Stage your modified files for commit:</p>
+<pre class=" language-bash"><code class="prism  language-bash"><span class="token comment"># Stage all files</span>
+<span class="token function">git</span> add <span class="token keyword">.</span>
+
+<span class="token comment"># Or stage specific files</span>
+<span class="token function">git</span> add backend/app/services/groq_service.py
+</code></pre>
+<h3 id="commit-with-clear-semantic-messages">1.3 Commit with Clear Semantic Messages</h3>
+<p>Always write clear commit messages so other agents and team members can track history:</p>
+<pre class=" language-bash"><code class="prism  language-bash"><span class="token function">git</span> commit -m <span class="token string">"feat: enforce pre-payment logistics check and sync brand specs"</span>
+</code></pre>
+<h3 id="push-to-github">1.4 Push to GitHub</h3>
+<p>Push your local <code>main</code> branch to your origin remote:</p>
+<pre class=" language-bash"><code class="prism  language-bash"><span class="token function">git</span> push origin main
+</code></pre>
+<hr>
+<h2 id="step-2-code-pulling--repository-synchronisation-vps">Step 2: Code Pulling &amp; Repository Synchronisation (VPS)</h2>
+<p>SSH into your Hostinger VPS and pull the latest code updates cleanly.</p>
+<h3 id="ssh-into-your-vps">2.1 SSH into your VPS</h3>
+<pre class=" language-bash"><code class="prism  language-bash"><span class="token function">ssh</span> root@***.***.*.*
+<span class="token comment"># Or using the IP address directly</span>
+<span class="token function">ssh</span> root@***.***.*.*
+</code></pre>
+<h3 id="navigate-to-the-backend-directory">2.2 Navigate to the Backend Directory</h3>
+<pre class=" language-bash"><code class="prism  language-bash"><span class="token function">cd</span> ~/kasi-backend
+</code></pre>
+<h3 id="pull-the-latest-updates">2.3 Pull the latest updates</h3>
+<pre class=" language-bash"><code class="prism  language-bash"><span class="token function">git</span> pull origin main
+</code></pre>
+<p><em>Note: If you have local changes on the VPS that conflict with git pull, you can discard them using <code>git reset --hard</code> before pulling (make sure you don’t lose custom <code>.env</code> parameters):</em></p>
+<pre class=" language-bash"><code class="prism  language-bash"><span class="token comment"># Optional: Only run if git pull returns a conflict error</span>
+<span class="token function">git</span> stash
+<span class="token function">git</span> pull origin main
+</code></pre>
+<hr>
+<h2 id="step-3-docker-stack-maintenance-rebuilds--recreation-vps">Step 3: Docker Stack Maintenance, Rebuilds &amp; Recreation (VPS)</h2>
+<p>Whenever code changes, dependencies are added to <code>requirements.txt</code>, or environment parameters inside <code>/root/kasi-backend/.env</code> are updated, you must perform a <strong>force-rebuild and recreation</strong>.</p>
+<h3 id="the-force-rebuild-command-the-gold-standard">3.1 The Force Rebuild Command (The Gold Standard)</h3>
+<p>Run this command inside <code>~/kasi-backend</code> to apply fresh configs, build new code additions, and spin the container stack back up cleanly:</p>
+<pre class=" language-bash"><code class="prism  language-bash">docker compose up -d --build --force-recreate
+</code></pre>
+<h3 id="flag-breakdown">3.2 Flag Breakdown:</h3>
+<ul>
+<li><code>-d</code>: <strong>Detached mode</strong>. Runs the container stack in the background.</li>
+<li><code>--build</code>: <strong>Recompile Dockerfiles</strong>. Tells Docker to fetch new dependencies from <code>requirements.txt</code> and rebuild container images.</li>
+<li><code>--force-recreate</code>: <strong>Purge and Recreate</strong>. Destroys the active containers and spins up new ones, guaranteeing that the fresh <code>.env</code> parameters are fully read and active.</li>
+</ul>
+<hr>
+<h2 id="step-4-log-tracing--system-auditing-vps">Step 4: Log Tracing &amp; System Auditing (VPS)</h2>
+<p>To inspect if Kasi is running smoothly and monitor conversational payloads in real time:</p>
+<h3 id="follow-flask-backend-server-logs">4.1 Follow flask backend server logs</h3>
+<pre class=" language-bash"><code class="prism  language-bash">docker compose logs -f kasi-backend
+</code></pre>
+<h3 id="follow-celery-background-tasks-logs">4.2 Follow Celery background tasks logs</h3>
+<pre class=" language-bash"><code class="prism  language-bash">docker compose logs -f celery-worker
+</code></pre>
+<h3 id="follow-whatsapp-evolution-api-logs">4.3 Follow WhatsApp Evolution API logs</h3>
+<pre class=" language-bash"><code class="prism  language-bash">docker compose logs -f evolution-api
+</code></pre>
+<h3 id="follow-postgresql-database-query-logs">4.4 Follow PostgreSQL database query logs</h3>
+<pre class=" language-bash"><code class="prism  language-bash">docker compose logs -f kasi_db
+</code></pre>
+<h3 id="filter-logs-for-real-time-ai-intent-and-errors">4.5 Filter logs for real-time AI intent and errors:</h3>
+<pre class=" language-bash"><code class="prism  language-bash">docker compose logs -f kasi-backend <span class="token operator">|</span> <span class="token function">grep</span> -E <span class="token string">"intent|Intent|Error"</span>
+</code></pre>
+<hr>
+<h2 id="step-5-database-migration-pipeline-vps">Step 5: Database Migration Pipeline (VPS)</h2>
+<p>Since your production database uses PostgreSQL inside Docker, you must run migrations through the Flask container using <code>docker compose exec</code>.</p>
+<h3 id="standard-database-upgrading">5.1 Standard Database Upgrading</h3>
+<p>If the migrations pull cleanly and match the database state, run:</p>
+<pre class=" language-bash"><code class="prism  language-bash">docker compose <span class="token function">exec</span> kasi-backend flask db upgrade
+</code></pre>
+<h3 id="checking-active-migration-version">5.2 Checking Active Migration Version</h3>
+<p>To see what migration version your database is currently stamped with:</p>
+<pre class=" language-bash"><code class="prism  language-bash">docker compose <span class="token function">exec</span> kasi-backend flask db current
+</code></pre>
+<h3 id="solving-alembic-divergence-history-the-target-database-not-up-to-date-error">5.3 Solving Alembic Divergence History (The “Target Database Not Up-to-Date” Error)</h3>
+<p>If Alembic returns an error stating that the target database is not up to date, it means the database schema has diverged from the migration history. You must <strong>stamp</strong> the database at the correct revision before upgrading.</p>
+<h4 id="case-a-you-have-custom-migration-scripts-e.g.-86d45ac4aec8-or-rcwknn8bhoai">Case A: You have custom migration scripts (e.g. <code>86d45ac4aec8</code> or <code>rcwknn8bhoai</code>)</h4>
+<ol>
+<li><strong>Stamp the database</strong> at the specific base revision that matches the database’s actual schema state:<pre class=" language-bash"><code class="prism  language-bash"><span class="token comment"># Stamp to the base specifications schema:</span>
+docker compose <span class="token function">exec</span> kasi-backend flask db stamp 86d45ac4aec8
+</code></pre>
+</li>
+<li><strong>Apply the remaining individual upgrades</strong> to bring the schema completely up to date:<pre class=" language-bash"><code class="prism  language-bash">docker compose <span class="token function">exec</span> kasi-backend flask db upgrade
+</code></pre>
+</li>
+</ol>
+<h4 id="case-b-bypassing-divergent-migration-versions">Case B: Bypassing divergent migration versions</h4>
+<p>If a specific migration script (e.g., <code>rcwknn8bhoai_add_complete_vendor_journey_models.py</code> or <code>73f67e5455ad_add_negotiation_fields.py</code>) was already manually applied to the PostgreSQL database tables but Alembic’s history doesn’t know it:</p>
+<ol>
+<li><strong>Stamp the database to that migration ID</strong> directly so Alembic knows it is already complete:<pre class=" language-bash"><code class="prism  language-bash">docker compose <span class="token function">exec</span> kasi-backend flask db stamp rcwknn8bhoai
+</code></pre>
+</li>
+<li><strong>Run the upgrade</strong> for any newer scripts:<pre class=" language-bash"><code class="prism  language-bash">docker compose <span class="token function">exec</span> kasi-backend flask db upgrade
+</code></pre>
+</li>
+</ol>
+<hr>
+<h2 id="step-6-querying-live-postgresql-database-records-directly">Step 6: Querying Live PostgreSQL Database Records Directly</h2>
+<p>If you ever need to inspect database rows or credits directly on the VPS:</p>
+<h3 id="log-in-to-the-postgresql-container-shell">6.1 Log in to the PostgreSQL container shell</h3>
+<pre class=" language-bash"><code class="prism  language-bash">docker <span class="token function">exec</span> -it kasi_db psql -U ******** -d ****************
+</code></pre>
+<h3 id="useful-live-queries-remember-the-semicolon--at-the-end">6.2 Useful Live Queries (Remember the semicolon <code>;</code> at the end):</h3>
+<ul>
+<li><strong>List all tables</strong>:<pre class=" language-sql"><code class="prism  language-sql">\dt
+</code></pre>
+</li>
+<li><strong>View registered merchants &amp; Kasi credits</strong>:<pre class=" language-sql"><code class="prism  language-sql"><span class="token keyword">SELECT</span> id<span class="token punctuation">,</span> business_name<span class="token punctuation">,</span> email<span class="token punctuation">,</span> kasi_credits <span class="token keyword">FROM</span> users<span class="token punctuation">;</span>
+</code></pre>
+</li>
+<li><strong>Update/Add credits to a merchant manually</strong>:<pre class=" language-sql"><code class="prism  language-sql"><span class="token keyword">UPDATE</span> users <span class="token keyword">SET</span> kasi_credits <span class="token operator">=</span> kasi_credits <span class="token operator">+</span> <span class="token number">50</span> <span class="token keyword">WHERE</span> id <span class="token operator">=</span> <span class="token number">5</span><span class="token punctuation">;</span>
+</code></pre>
+</li>
+<li><strong>Inspect the last 5 invoices</strong>:<pre class=" language-sql"><code class="prism  language-sql"><span class="token keyword">SELECT</span> reference<span class="token punctuation">,</span> customer_name<span class="token punctuation">,</span> total_amount<span class="token punctuation">,</span> delivery_address<span class="token punctuation">,</span> <span class="token keyword">status</span> <span class="token keyword">FROM</span> invoices <span class="token keyword">ORDER</span> <span class="token keyword">BY</span> created_at <span class="token keyword">DESC</span> <span class="token keyword">LIMIT</span> <span class="token number">5</span><span class="token punctuation">;</span>
+</code></pre>
+</li>
+<li><strong>Exit the Postgres Shell</strong>:<pre class=" language-sql"><code class="prism  language-sql">\q
+</code></pre>
+</li>
+</ul>
+<hr>
+<h2 id="step-7-automated-midnight-database-backups">Step 7: Automated Midnight Database Backups</h2>
+<p>Ensure that your live PostgreSQL database is backed up automatically.</p>
+<h3 id="edit-the-system-cron">7.1 Edit the System Cron</h3>
+<pre class=" language-bash"><code class="prism  language-bash"><span class="token function">crontab</span> -e
+</code></pre>
+<h3 id="append-this-daily-midnight-dump-command">7.2 Append this daily midnight dump command:</h3>
+<pre class=" language-text"><code class="prism  language-text">0 0 * * * mkdir -p /root/db-backups &amp;&amp; docker exec -t kasi_db pg_dump -U ******** **************** &gt; /root/db-backups/backup_$(date +\%F).sql 2&gt;&amp;1
+</code></pre>
+<p>Your merchant tables will now be backed up automatically every midnight!</p>
+</div>
+</body>
+
+</html>

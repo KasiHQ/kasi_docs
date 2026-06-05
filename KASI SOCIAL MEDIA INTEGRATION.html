@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KASI RULES AND DOCUMENTATIONS</title>
+  <link rel="stylesheet" href="https://stackedit.io/style.css" />
+</head>
+
+<body class="stackedit">
+  <div class="stackedit__html"><h1 id="kasi-social-media-integrations-technical-architecture--connection-guide">Kasi Social Media Integrations: Technical Architecture &amp; Connection Guide</h1>
+<p>This document provides a detailed technical guide on how Kasi connects, authorizes, and handles multi-tenant messaging across WhatsApp, Telegram, Instagram, and Facebook Messenger.</p>
+<hr>
+<h2 id="architectural-overview">1. Architectural Overview</h2>
+<p>Kasi’s social integrations are designed as a <strong>multi-tenant messaging router</strong>. We use a centralized database and unified API endpoints while isolating merchant data (products, rules, conversations) at runtime.</p>
+<h3 id="core-db-model-integration">Core DB Model: <code>Integration</code></h3>
+<p>Every connected channel is stored in the <code>integrations</code> table:</p>
+<ul>
+<li><code>user_id</code>: Links the integration to a specific merchant.</li>
+<li><code>platform</code>: <code>'whatsapp'</code>, <code>'telegram'</code>, <code>'instagram'</code>, or <code>'facebook'</code>.</li>
+<li><code>instance_name</code>: The unique identifier representing the active session/account (e.g. Evolution API instance name, Telegram bot username, Meta Page ID, or Instagram Business Account ID).</li>
+<li><code>access_token</code>: Stores the API credentials (e.g. Meta Page Access Token or Telegram Bot Token).</li>
+<li><code>connection_status</code>: <code>'connected'</code>, <code>'pending'</code>, or <code>'disconnected'</code>.</li>
+<li><code>is_automated</code>: Boolean toggle to mute/unmute AI auto-replies.</li>
+</ul>
+<hr>
+<h2 id="platform-breakdowns">2. Platform Breakdowns</h2>
+<h3 id="🟢-channel-a-whatsapp-business-evolution-api">🟢 Channel A: WhatsApp Business (Evolution API)</h3>
+<p>WhatsApp integration is powered by the <strong>Evolution API</strong> (self-hosted external service running Node.js and the Baileys library).</p>
+<h4 id="connection-flow">1. Connection Flow</h4>
+<ol>
+<li><strong>Initiation:</strong> The merchant enters their phone number in Kasi Settings.</li>
+<li><strong>Instance Creation:</strong> The backend <code>POST /api/whatsapp/connect</code> sends a command to the Evolution API to provision a new isolated WhatsApp instance:
+<ul>
+<li><strong>Endpoint:</strong> <code>POST {EVOLUTION_API_URL}/instance/create</code></li>
+<li><strong>Webhook Subscription:</strong> The instance is initialized with the Kasi webhook URL (<code>{BASE_URL}/api/whatsapp/webhook</code>) registered to listen for <code>CONNECTION_UPDATE</code> and <code>MESSAGES_UPSERT</code>.</li>
+</ul>
+</li>
+<li><strong>Pairing Code Generation:</strong> The backend polls the Evolution API endpoint:<br>
+<code>GET {EVOLUTION_API_URL}/instance/connect/{instance_name}?number={phone_number}</code><br>
+This returns an 8-character pairing code (e.g., <code>ABCD-1234</code>).</li>
+<li><strong>Linkage:</strong> The merchant inputs this pairing code into their WhatsApp app under <strong>Linked Devices</strong> -&gt; <strong>Link with Phone Number</strong>.</li>
+<li><strong>Activation:</strong> The Evolution API triggers a <code>CONNECTION_UPDATE</code> webhook with status <code>'open'</code>. The backend captures this and updates the integration status in the DB to <code>connected</code>.</li>
+</ol>
+<h4 id="webhook-message-flow-post-apiwhatsappwebhook">2. Webhook Message Flow (<code>POST /api/whatsapp/webhook</code>)</h4>
+<ul>
+<li><strong>Deduplication:</strong> Uses the <code>IdempotencyKey</code> table and memory cache (<code>PROCESSED_MESSAGES</code>) to prevent duplicate execution.</li>
+<li><strong>Audio Transcription:</strong> If the message is a voice note (<code>audioMessage</code>), Kasi calls <code>GET /media/getBase64/{instance}</code> to download the media, sends it to <strong>OpenAI Whisper</strong> or <strong>Groq Whisper</strong> for speech-to-text, and prepends <code>🎤 [Voice Note]:</code> to the text content.</li>
+<li><strong>Rider Delivery Interceptor:</strong> If the sender’s phone matches one of the vendor’s saved logistics riders, Kasi intercepts the chat. If the message says “Yes/Confirm”, it marks the invoice as “In Transit” and sends automatic notification updates to both the rider and customer.</li>
+<li><strong>AI Processing:</strong> Checks the Gatekeeper service to ensure AI is unmuted. Then routes text to <code>SalesAI.process</code> (and base64 images to <code>SalesAI.process_image</code> if photos are attached).</li>
+<li><strong>Dispatch:</strong> Sends the response back through the Evolution API:<br>
+<code>POST {EVOLUTION_API_URL}/message/sendText/{instance_name}</code></li>
+</ul>
+<hr>
+<h3 id="🔵-channel-b-telegram-bots">🔵 Channel B: Telegram Bots</h3>
+<p>Telegram integrations use dedicated bots created via Telegram’s <code>@BotFather</code>.</p>
+<h4 id="connection-flow-1">1. Connection Flow</h4>
+<ol>
+<li><strong>Credential Entry:</strong> The merchant creates a bot on Telegram, obtains the Bot Token, and inputs it in Kasi Settings.</li>
+<li><strong>Webhook Registration:</strong> Kasi calls the Telegram API to set our webhook route for their bot:<br>
+<code>POST https://api.telegram.org/bot{token}/setWebhook?url={BASE_URL}/api/telegram/webhook/{token}</code></li>
+<li><strong>Database Save:</strong> Saves the integration under platform <code>'telegram'</code> with <code>access_token = token</code>.</li>
+</ol>
+<h4 id="webhook-message-flow-post-apitelegramwebhooktoken">2. Webhook Message Flow (<code>POST /api/telegram/webhook/&lt;token&gt;</code>)</h4>
+<ul>
+<li><strong>Routing:</strong> The request URL contains the bot token. Kasi queries <code>Integration.query.filter_by(access_token=token).first()</code> to locate the merchant.</li>
+<li><strong>Processing:</strong> Message details are extracted. The text is passed to <code>SalesAI.process</code>.</li>
+<li><strong>Dispatch:</strong> Kasi sends the reply using the Telegram Bot API:<br>
+<code>POST https://api.telegram.org/bot{token}/sendMessage</code></li>
+</ul>
+<hr>
+<h3 id="🟣-channel-c-instagram-business-dm--facebook-messenger">🟣 Channel C: Instagram Business DM &amp; Facebook Messenger</h3>
+<p>Meta messaging channels are handled via a single Meta Developer App using the Graph API and OAuth.</p>
+<pre class=" language-mermaid"><svg id="mermaid-svg-4Z5Gi7VrddaabUAr" width="100%" xmlns="http://www.w3.org/2000/svg" height="899" style="max-width: 1634px;" viewBox="-50 -10 1634 899"><style>#mermaid-svg-4Z5Gi7VrddaabUAr{font-family:"trebuchet ms",verdana,arial,sans-serif;font-size:16px;fill:#000000;}#mermaid-svg-4Z5Gi7VrddaabUAr .error-icon{fill:#552222;}#mermaid-svg-4Z5Gi7VrddaabUAr .error-text{fill:#552222;stroke:#552222;}#mermaid-svg-4Z5Gi7VrddaabUAr .edge-thickness-normal{stroke-width:2px;}#mermaid-svg-4Z5Gi7VrddaabUAr .edge-thickness-thick{stroke-width:3.5px;}#mermaid-svg-4Z5Gi7VrddaabUAr .edge-pattern-solid{stroke-dasharray:0;}#mermaid-svg-4Z5Gi7VrddaabUAr .edge-pattern-dashed{stroke-dasharray:3;}#mermaid-svg-4Z5Gi7VrddaabUAr .edge-pattern-dotted{stroke-dasharray:2;}#mermaid-svg-4Z5Gi7VrddaabUAr .marker{fill:#666;stroke:#666;}#mermaid-svg-4Z5Gi7VrddaabUAr .marker.cross{stroke:#666;}#mermaid-svg-4Z5Gi7VrddaabUAr svg{font-family:"trebuchet ms",verdana,arial,sans-serif;font-size:16px;}#mermaid-svg-4Z5Gi7VrddaabUAr .actor{stroke:hsl(0,0%,83%);fill:#eee;}#mermaid-svg-4Z5Gi7VrddaabUAr text.actor > tspan{fill:#333;stroke:none;}#mermaid-svg-4Z5Gi7VrddaabUAr .actor-line{stroke:#666;}#mermaid-svg-4Z5Gi7VrddaabUAr .messageLine0{stroke-width:1.5;stroke-dasharray:none;stroke:#333;}#mermaid-svg-4Z5Gi7VrddaabUAr .messageLine1{stroke-width:1.5;stroke-dasharray:2,2;stroke:#333;}#mermaid-svg-4Z5Gi7VrddaabUAr #arrowhead path{fill:#333;stroke:#333;}#mermaid-svg-4Z5Gi7VrddaabUAr .sequenceNumber{fill:white;}#mermaid-svg-4Z5Gi7VrddaabUAr #sequencenumber{fill:#333;}#mermaid-svg-4Z5Gi7VrddaabUAr #crosshead path{fill:#333;stroke:#333;}#mermaid-svg-4Z5Gi7VrddaabUAr .messageText{fill:#333;stroke:#333;}#mermaid-svg-4Z5Gi7VrddaabUAr .labelBox{stroke:hsl(0,0%,83%);fill:#eee;}#mermaid-svg-4Z5Gi7VrddaabUAr .labelText,#mermaid-svg-4Z5Gi7VrddaabUAr .labelText > tspan{fill:#333;stroke:none;}#mermaid-svg-4Z5Gi7VrddaabUAr .loopText,#mermaid-svg-4Z5Gi7VrddaabUAr .loopText > tspan{fill:#333;stroke:none;}#mermaid-svg-4Z5Gi7VrddaabUAr .loopLine{stroke-width:2px;stroke-dasharray:2,2;stroke:hsl(0,0%,83%);fill:hsl(0,0%,83%);}#mermaid-svg-4Z5Gi7VrddaabUAr .note{stroke:hsl(60,100%,23.3333333333%);fill:#ffa;}#mermaid-svg-4Z5Gi7VrddaabUAr .noteText,#mermaid-svg-4Z5Gi7VrddaabUAr .noteText > tspan{fill:#333;stroke:none;}#mermaid-svg-4Z5Gi7VrddaabUAr .activation0{fill:#f4f4f4;stroke:#666;}#mermaid-svg-4Z5Gi7VrddaabUAr .activation1{fill:#f4f4f4;stroke:#666;}#mermaid-svg-4Z5Gi7VrddaabUAr .activation2{fill:#f4f4f4;stroke:#666;}#mermaid-svg-4Z5Gi7VrddaabUAr:root{--mermaid-font-family:"trebuchet ms",verdana,arial,sans-serif;}#mermaid-svg-4Z5Gi7VrddaabUAr sequence{fill:apa;}</style><g></g><g><line id="actor10" x1="75" y1="5" x2="75" y2="888" class="actor-line" stroke-width="0.5px" stroke="#999"></line><rect x="0" y="0" fill="#eaeaea" stroke="#666" width="150" height="65" rx="3" ry="3" class="actor"></rect><text x="75" y="32.5" dominant-baseline="central" alignment-baseline="central" class="actor" style="text-anchor: middle; font-size: 14px; font-weight: 400; font-family: Open-Sans, &quot;sans-serif&quot;;"><tspan x="75" dy="0">Merchant Browser</tspan></text></g><g><line id="actor11" x1="468" y1="5" x2="468" y2="888" class="actor-line" stroke-width="0.5px" stroke="#999"></line><rect x="393" y="0" fill="#eaeaea" stroke="#666" width="150" height="65" rx="3" ry="3" class="actor"></rect><text x="468" y="32.5" dominant-baseline="central" alignment-baseline="central" class="actor" style="text-anchor: middle; font-size: 14px; font-weight: 400; font-family: Open-Sans, &quot;sans-serif&quot;;"><tspan x="468" dy="0">Kasi Frontend</tspan></text></g><g><line id="actor12" x1="848" y1="5" x2="848" y2="888" class="actor-line" stroke-width="0.5px" stroke="#999"></line><rect x="773" y="0" fill="#eaeaea" stroke="#666" width="150" height="65" rx="3" ry="3" class="actor"></rect><text x="848" y="32.5" dominant-baseline="central" alignment-baseline="central" class="actor" style="text-anchor: middle; font-size: 14px; font-weight: 400; font-family: Open-Sans, &quot;sans-serif&quot;;"><tspan x="848" dy="0">Meta Dialog</tspan></text></g><g><line id="actor13" x1="1048" y1="5" x2="1048" y2="888" class="actor-line" stroke-width="0.5px" stroke="#999"></line><rect x="973" y="0" fill="#eaeaea" stroke="#666" width="150" height="65" rx="3" ry="3" class="actor"></rect><text x="1048" y="32.5" dominant-baseline="central" alignment-baseline="central" class="actor" style="text-anchor: middle; font-size: 14px; font-weight: 400; font-family: Open-Sans, &quot;sans-serif&quot;;"><tspan x="1048" dy="0">Kasi Backend</tspan></text></g><g><line id="actor14" x1="1459" y1="5" x2="1459" y2="888" class="actor-line" stroke-width="0.5px" stroke="#999"></line><rect x="1384" y="0" fill="#eaeaea" stroke="#666" width="150" height="65" rx="3" ry="3" class="actor"></rect><text x="1459" y="32.5" dominant-baseline="central" alignment-baseline="central" class="actor" style="text-anchor: middle; font-size: 14px; font-weight: 400; font-family: Open-Sans, &quot;sans-serif&quot;;"><tspan x="1459" dy="0">Meta Graph API</tspan></text></g><defs><marker id="arrowhead" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z"></path></marker></defs><defs><marker id="crosshead" markerWidth="15" markerHeight="8" orient="auto" refX="16" refY="4"><path fill="black" stroke="#000000" stroke-width="1px" d="M 9,2 V 6 L16,4 Z" style="stroke-dasharray: 0, 0;"></path><path fill="none" stroke="#000000" stroke-width="1px" d="M 0,1 L 6,7 M 6,1 L 0,7" style="stroke-dasharray: 0, 0;"></path></marker></defs><defs><marker id="filled-head" refX="18" refY="7" markerWidth="20" markerHeight="28" orient="auto"><path d="M 18,7 L9,13 L14,7 L9,1 Z"></path></marker></defs><defs><marker id="sequencenumber" refX="15" refY="15" markerWidth="60" markerHeight="40" orient="auto"><circle cx="15" cy="15" r="6"></circle></marker></defs><text x="272" y="80" text-anchor="middle" dominant-baseline="middle" alignment-baseline="middle" class="messageText" dy="1em" style="font-family: &quot;trebuchet ms&quot;, verdana, arial, sans-serif; font-size: 16px; font-weight: 400;">Click "Connect with Facebook"</text><line x1="75" y1="111" x2="468" y2="111" class="messageLine0" stroke-width="2" stroke="none" marker-end="url(#arrowhead)" style="fill: none;"></line><text x="272" y="126" text-anchor="middle" dominant-baseline="middle" alignment-baseline="middle" class="messageText" dy="1em" style="font-family: &quot;trebuchet ms&quot;, verdana, arial, sans-serif; font-size: 16px; font-weight: 400;">Redirect to Meta Dialog with App ID &amp; scopes</text><line x1="468" y1="157" x2="75" y2="157" class="messageLine0" stroke-width="2" stroke="none" marker-end="url(#arrowhead)" style="fill: none;"></line><text x="462" y="172" text-anchor="middle" dominant-baseline="middle" alignment-baseline="middle" class="messageText" dy="1em" style="font-family: &quot;trebuchet ms&quot;, verdana, arial, sans-serif; font-size: 16px; font-weight: 400;">Authorize permissions &amp; select page/IG</text><line x1="75" y1="203" x2="848" y2="203" class="messageLine0" stroke-width="2" stroke="none" marker-end="url(#arrowhead)" style="fill: none;"></line><text x="658" y="218" text-anchor="middle" dominant-baseline="middle" alignment-baseline="middle" class="messageText" dy="1em" style="font-family: &quot;trebuchet ms&quot;, verdana, arial, sans-serif; font-size: 16px; font-weight: 400;">Redirect back with code &amp; state (platform)</text><line x1="848" y1="249" x2="468" y2="249" class="messageLine0" stroke-width="2" stroke="none" marker-end="url(#arrowhead)" style="fill: none;"></line><text x="758" y="264" text-anchor="middle" dominant-baseline="middle" alignment-baseline="middle" class="messageText" dy="1em" style="font-family: &quot;trebuchet ms&quot;, verdana, arial, sans-serif; font-size: 16px; font-weight: 400;">POST /api/meta/oauth/callback {code, platform}</text><line x1="468" y1="295" x2="1048" y2="295" class="messageLine0" stroke-width="2" stroke="none" marker-end="url(#arrowhead)" style="fill: none;"></line><text x="1254" y="310" text-anchor="middle" dominant-baseline="middle" alignment-baseline="middle" class="messageText" dy="1em" style="font-family: &quot;trebuchet ms&quot;, verdana, arial, sans-serif; font-size: 16px; font-weight: 400;">exchange code for user access token</text><line x1="1048" y1="341" x2="1459" y2="341" class="messageLine0" stroke-width="2" stroke="none" marker-end="url(#arrowhead)" style="fill: none;"></line><text x="1254" y="356" text-anchor="middle" dominant-baseline="middle" alignment-baseline="middle" class="messageText" dy="1em" style="font-family: &quot;trebuchet ms&quot;, verdana, arial, sans-serif; font-size: 16px; font-weight: 400;">returns user access token</text><line x1="1459" y1="387" x2="1048" y2="387" class="messageLine0" stroke-width="2" stroke="none" marker-end="url(#arrowhead)" style="fill: none;"></line><text x="1254" y="402" text-anchor="middle" dominant-baseline="middle" alignment-baseline="middle" class="messageText" dy="1em" style="font-family: &quot;trebuchet ms&quot;, verdana, arial, sans-serif; font-size: 16px; font-weight: 400;">GET /me/accounts (list pages and page tokens)</text><line x1="1048" y1="433" x2="1459" y2="433" class="messageLine0" stroke-width="2" stroke="none" marker-end="url(#arrowhead)" style="fill: none;"></line><text x="1254" y="448" text-anchor="middle" dominant-baseline="middle" alignment-baseline="middle" class="messageText" dy="1em" style="font-family: &quot;trebuchet ms&quot;, verdana, arial, sans-serif; font-size: 16px; font-weight: 400;">returns pages list</text><line x1="1459" y1="479" x2="1048" y2="479" class="messageLine0" stroke-width="2" stroke="none" marker-end="url(#arrowhead)" style="fill: none;"></line><text x="1254" y="584" text-anchor="middle" dominant-baseline="middle" alignment-baseline="middle" class="messageText" dy="1em" style="font-family: &quot;trebuchet ms&quot;, verdana, arial, sans-serif; font-size: 16px; font-weight: 400;">Check linked Instagram Account ID</text><line x1="1048" y1="615" x2="1459" y2="615" class="messageLine0" stroke-width="2" stroke="none" marker-end="url(#arrowhead)" style="fill: none;"></line><g><line x1="1038" y1="534" x2="1469" y2="534" class="loopLine"></line><line x1="1469" y1="534" x2="1469" y2="625" class="loopLine"></line><line x1="1038" y1="625" x2="1469" y2="625" class="loopLine"></line><line x1="1038" y1="534" x2="1038" y2="625" class="loopLine"></line><polygon points="1038,534 1088,534 1088,547 1079.6,554 1038,554" class="labelBox"></polygon><text x="1063" y="547" text-anchor="middle" dominant-baseline="middle" alignment-baseline="middle" class="labelText" style="font-family: &quot;trebuchet ms&quot;, verdana, arial, sans-serif; font-size: 16px; font-weight: 400;">loop</text><text x="1278.5" y="552" text-anchor="middle" class="loopText" style="font-family: &quot;trebuchet ms&quot;, verdana, arial, sans-serif; font-size: 16px; font-weight: 400;"><tspan x="1278.5">[For each Page]</tspan></text></g><g><line x1="1028" y1="489" x2="1479" y2="489" class="loopLine"></line><line x1="1479" y1="489" x2="1479" y2="635" class="loopLine"></line><line x1="1028" y1="635" x2="1479" y2="635" class="loopLine"></line><line x1="1028" y1="489" x2="1028" y2="635" class="loopLine"></line><polygon points="1028,489 1078,489 1078,502 1069.6,509 1028,509" class="labelBox"></polygon><text x="1053" y="502" text-anchor="middle" dominant-baseline="middle" alignment-baseline="middle" class="labelText" style="font-family: &quot;trebuchet ms&quot;, verdana, arial, sans-serif; font-size: 16px; font-weight: 400;">alt</text><text x="1278.5" y="507" text-anchor="middle" class="loopText" style="font-family: &quot;trebuchet ms&quot;, verdana, arial, sans-serif; font-size: 16px; font-weight: 400;"><tspan x="1278.5">[Platform is Instagram]</tspan></text></g><text x="1048" y="650" text-anchor="middle" dominant-baseline="middle" alignment-baseline="middle" class="messageText" dy="1em" style="font-family: &quot;trebuchet ms&quot;, verdana, arial, sans-serif; font-size: 16px; font-weight: 400;">Save Instagram Account ID / Page ID &amp; Token in DB</text><path d="M 1048,681 C 1108,671 1108,711 1048,701" class="messageLine0" stroke-width="2" stroke="none" marker-end="url(#arrowhead)" style="fill: none;"></path><text x="758" y="726" text-anchor="middle" dominant-baseline="middle" alignment-baseline="middle" class="messageText" dy="1em" style="font-family: &quot;trebuchet ms&quot;, verdana, arial, sans-serif; font-size: 16px; font-weight: 400;">Return success status</text><line x1="1048" y1="757" x2="468" y2="757" class="messageLine0" stroke-width="2" stroke="none" marker-end="url(#arrowhead)" style="fill: none;"></line><text x="272" y="772" text-anchor="middle" dominant-baseline="middle" alignment-baseline="middle" class="messageText" dy="1em" style="font-family: &quot;trebuchet ms&quot;, verdana, arial, sans-serif; font-size: 16px; font-weight: 400;">Show "Active Connection"</text><line x1="468" y1="803" x2="75" y2="803" class="messageLine0" stroke-width="2" stroke="none" marker-end="url(#arrowhead)" style="fill: none;"></line><g><rect x="0" y="823" fill="#eaeaea" stroke="#666" width="150" height="65" rx="3" ry="3" class="actor"></rect><text x="75" y="855.5" dominant-baseline="central" alignment-baseline="central" class="actor" style="text-anchor: middle; font-size: 14px; font-weight: 400; font-family: Open-Sans, &quot;sans-serif&quot;;"><tspan x="75" dy="0">Merchant Browser</tspan></text></g><g><rect x="393" y="823" fill="#eaeaea" stroke="#666" width="150" height="65" rx="3" ry="3" class="actor"></rect><text x="468" y="855.5" dominant-baseline="central" alignment-baseline="central" class="actor" style="text-anchor: middle; font-size: 14px; font-weight: 400; font-family: Open-Sans, &quot;sans-serif&quot;;"><tspan x="468" dy="0">Kasi Frontend</tspan></text></g><g><rect x="773" y="823" fill="#eaeaea" stroke="#666" width="150" height="65" rx="3" ry="3" class="actor"></rect><text x="848" y="855.5" dominant-baseline="central" alignment-baseline="central" class="actor" style="text-anchor: middle; font-size: 14px; font-weight: 400; font-family: Open-Sans, &quot;sans-serif&quot;;"><tspan x="848" dy="0">Meta Dialog</tspan></text></g><g><rect x="973" y="823" fill="#eaeaea" stroke="#666" width="150" height="65" rx="3" ry="3" class="actor"></rect><text x="1048" y="855.5" dominant-baseline="central" alignment-baseline="central" class="actor" style="text-anchor: middle; font-size: 14px; font-weight: 400; font-family: Open-Sans, &quot;sans-serif&quot;;"><tspan x="1048" dy="0">Kasi Backend</tspan></text></g><g><rect x="1384" y="823" fill="#eaeaea" stroke="#666" width="150" height="65" rx="3" ry="3" class="actor"></rect><text x="1459" y="855.5" dominant-baseline="central" alignment-baseline="central" class="actor" style="text-anchor: middle; font-size: 14px; font-weight: 400; font-family: Open-Sans, &quot;sans-serif&quot;;"><tspan x="1459" dy="0">Meta Graph API</tspan></text></g></svg></pre>
+<h4 id="connection-flow-frictionless-oauth">1. Connection Flow (Frictionless OAuth)</h4>
+<ol>
+<li><strong>Authorization Request:</strong> The frontend redirects the user to Facebook’s OAuth URL:<br>
+<code>https://www.facebook.com/v21.0/dialog/oauth?client_id={APP_ID}&amp;redirect_uri={FRONTEND_URL}/settings&amp;scope=pages_show_list,pages_messaging,instagram_basic,instagram_manage_messages,pages_read_engagement&amp;response_type=code&amp;state={platform}</code></li>
+<li><strong>Facebook Redirect:</strong> Once authorized, Facebook redirects the merchant back to Kasi Settings:<br>
+<code>https://usekasi.com/settings?code={auth_code}&amp;state={instagram|facebook}</code></li>
+<li><strong>Code Exchange:</strong> The frontend grabs the <code>code</code> and calls:<br>
+<code>POST /api/meta/oauth/callback</code></li>
+<li><strong>Token Exchange:</strong> Backend calls Meta API to exchange the authorization code for a User Access Token:<br>
+<code>GET https://graph.facebook.com/v21.0/oauth/access_token</code></li>
+<li><strong>Page List Query:</strong> Backend calls <code>/me/accounts</code> using the User Access Token to fetch the list of Facebook Pages managed by the merchant, along with their Page Access Tokens.</li>
+<li><strong>Account Resolution:</strong>
+<ul>
+<li><strong>Facebook Messenger:</strong> Kasi connects the first Page in the list. The Page ID is saved as <code>instance_name</code> and the Page Access Token (PAT) as <code>access_token</code>.</li>
+<li><strong>Instagram:</strong> Kasi queries each page ID:<br>
+<code>GET https://graph.facebook.com/v21.0/{page_id}?fields=instagram_business_account</code><br>
+If a linked Instagram Business Account is found, Kasi saves the Instagram Account ID as <code>instance_name</code> and the corresponding Facebook Page’s access token as <code>access_token</code> (Meta requires the linked Page Access Token to send DMs).</li>
+</ul>
+</li>
+</ol>
+<h4 id="webhook-message-flow-post-apimetawebhook">2. Webhook Message Flow (<code>POST /api/meta/webhook</code>)</h4>
+<ul>
+<li><strong>Signature Verification:</strong> Validates the cryptographic header <code>x-hub-signature-256</code> by generating an HMAC-SHA256 hash of the raw request payload using <code>META_APP_SECRET</code> as the key.</li>
+<li><strong>Routing:</strong> Inspects <code>entry.messaging.recipient.id</code> (Page ID or Instagram Account ID). Kasi queries <code>Integration.query.filter_by(instance_name=recipient_id).first()</code> to identify the merchant.</li>
+<li><strong>Image/Vision Support:</strong> If image attachments are present, Kasi calls the CDN URL provided by Meta, converts the image bytes to a base64 string, and passes it to <code>SalesAI.process_image</code>.</li>
+<li><strong>Standard DMs:</strong> Text is routed directly to <code>SalesAI.process</code>.</li>
+<li><strong>Response Dispatch:</strong> Kasi sends the reply via Graph API:<br>
+<code>POST https://graph.facebook.com/v21.0/me/messages?access_token={saved_page_access_token}</code><br>
+Payload format:<pre class=" language-json"><code class="prism  language-json"><span class="token punctuation">{</span>
+  <span class="token string">"recipient"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"id"</span><span class="token punctuation">:</span> <span class="token string">"sender_id"</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
+  <span class="token string">"message"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"text"</span><span class="token punctuation">:</span> <span class="token string">"AI response text here"</span><span class="token punctuation">}</span>
+<span class="token punctuation">}</span>
+</code></pre>
+</li>
+</ul>
+<hr>
+<h2 id="environment-variables-settings">3. Environment Variables Settings</h2>
+<p>Configuration checklist for backend <code>.env</code>:</p>
+<pre class=" language-env"><code class="prism  language-env"># Meta Graph API configuration
+META_APP_ID=**********************
+META_APP_SECRET=********************************
+META_VERIFY_TOKEN=********************************
+
+# Evolution API (WhatsApp) configuration
+EVOLUTION_API_URL=http://localhost:8080
+EVOLUTION_GLOBAL_API_KEY=************************
+
+# General config
+BASE_URL=https://api.usekasi.com
+</code></pre>
+<hr>
+<h2 id="troubleshooting-checklist-for-devs">4. Troubleshooting Checklist for Devs</h2>
+<ol>
+<li><strong>Meta Webhook Handshake Failing:</strong><br>
+Ensure <code>META_VERIFY_TOKEN</code> matches exactly between the Meta Developer portal settings and the backend <code>.env</code>.</li>
+<li><strong>Instagram Webhook events not delivering:</strong>
+<ul>
+<li>Verify the Instagram account is set to <strong>Business</strong> type (Creator type has message restrictions).</li>
+<li>Verify the Instagram account is explicitly linked to the Facebook Page in the Page’s Settings.</li>
+<li>Make sure the Page Access Token was granted the <code>instagram_manage_messages</code> permission.</li>
+</ul>
+</li>
+<li><strong>WhatsApp Pairing Code failing to generate:</strong><br>
+Check if the Evolution API Docker container is running and healthy:<br>
+<code>docker ps | grep evolution</code><br>
+Ensure the global API key matches.</li>
+</ol>
+</div>
+</body>
+
+</html>
