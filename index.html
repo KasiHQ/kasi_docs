@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kasi Developer Documentation</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="header-left">
+      <button id="menu-btn" class="menu-btn" aria-label="Toggle Menu">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/>
+        </svg>
+      </button>
+      <div class="logo-icon">K</div>
+      <span class="logo-text">kasi <span style="font-weight: 300;">Documentation</span></span>
+      <span class="badge-dev">For Developers</span>
+    </div>
+    
+    <div class="header-search">
+      <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+      </svg>
+      <input type="text" id="search-input" class="search-input" placeholder="Search documentation...">
+    </div>
+
+    <div class="header-actions">
+      <button id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle Theme">
+        <!-- Sun/Moon icon loaded by JS -->
+      </button>
+    </div>
+  </header>
+
+  <!-- Page Container -->
+  <div class="page-container">
+    
+    <!-- Sidebar -->
+    <aside id="sidebar" class="sidebar">
+      <div>
+        <div class="menu-section-title">Getting Started</div>
+        <ul class="menu-list">
+          <li>
+            <a class="menu-item-link active" data-target="intro">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/>
+                <path d="M6 6h10M6 10h10"/>
+              </svg>
+              <span>Welcome to Kasi</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="menu-section-title">Integrations</div>
+        <ul class="menu-list">
+          <li>
+            <a class="menu-item-link" data-target="social-integration">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                <line x1="12" x2="12" y1="22.08" y2="12"/>
+              </svg>
+              <span>Social Media Integrations</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="menu-section-title">Operations & Ops</div>
+        <ul class="menu-list">
+          <li>
+            <a class="menu-item-link" data-target="vps-deployment">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect width="20" height="8" x="2" y="3" rx="2"/>
+                <rect width="20" height="8" x="2" y="13" rx="2"/>
+                <line x1="6" x2="6.01" y1="7" y2="7"/>
+                <line x1="6" x2="6.01" y1="17" y2="17"/>
+              </svg>
+              <span>VPS Production Deployment</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <div class="breadcrumbs">
+        <a href="#">Kasi Developer Hub</a>
+        <span>&gt;</span>
+        <a href="#">Documentation</a>
+        <span>&gt;</span>
+        <span id="current-section-breadcrumb">Welcome to Kasi</span>
+      </div>
+
+      <!-- Welcome Article -->
+      <article id="intro" class="doc-article active">
+        <div class="article-meta">
+          <div class="meta-item">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+            <span>Reading time 2m</span>
+          </div>
+          <div class="meta-item">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+            <span>Updated Today</span>
+          </div>
+          <div class="meta-item">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24"/></svg>
+            <span>Level Beginner</span>
+          </div>
+        </div>
+
+        <h1>Welcome to Kasi Documentation</h1>
+        <p>This developer portal contains the technical guides, system models, database mappings, and deployment playbooks for Kasi's automated commerce conversational stack.</p>
+        
+        <div class="banner banner-info">
+          <div class="banner-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+          </div>
+          <div>
+            <strong>Quick Start:</strong> Explore the side menu to view technical architectures of social media channels or step-by-step VPS ops guidelines.
+          </div>
+        </div>
+
+        <h2>Core Systems</h2>
+        <ul>
+          <li><strong>SalesAI conversational engine:</strong> Custom LLM pipeline handling product catalog parsing, dynamic pricing, and negotiations.</li>
+          <li><strong>Evolution API:</strong> central WhatsApp baileys listener.</li>
+          <li><strong>Meta Graph webhook framework:</strong> multi-platform Instagram/Facebook DM processor.</li>
+          <li><strong>Gatekeeper Service:</strong> filters spam and mutes auto-replies when manual vendor attention is requested.</li>
+        </ul>
+      </article>
+
+      <!-- Social Media Integrations Article -->
+      <article id="social-integration" class="doc-article">
+        <div class="article-meta">
+          <div class="meta-item">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+            <span>Reading time 8m</span>
+          </div>
+          <div class="meta-item">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+            <span>Updated Today</span>
+          </div>
+          <div class="meta-item">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24"/></svg>
+            <span>Level Advanced</span>
+          </div>
+        </div>
+
+        <h1>Kasi Social Media Integrations: Technical Guide</h1>
+        <p>This section provides a detailed technical guide on how Kasi connects, authorizes, and handles multi-tenant messaging across WhatsApp, Telegram, Instagram, and Facebook Messenger.</p>
+        
+        <h2>1. Architectural Overview</h2>
+        <p>Kasi’s social integrations are designed as a <strong>multi-tenant messaging router</strong>. We use a centralized database and unified API endpoints while isolating merchant data (products, rules, conversations) at runtime.</p>
+        
+        <h3>Core DB Model: <code>Integration</code></h3>
+        <p>Every connected channel is stored in the <code>integrations</code> table:</p>
+        <ul>
+          <li><code>user_id</code>: Links the integration to a specific merchant.</li>
+          <li><code>platform</code>: <code>'whatsapp'</code>, <code>'telegram'</code>, <code>'instagram'</code>, or <code>'facebook'</code>.</li>
+          <li><code>instance_name</code>: The unique identifier representing the active session/account (e.g. Evolution API instance name, Telegram bot username, Meta Page ID, or Instagram Business Account ID).</li>
+          <li><code>access_token</code>: Stores the API credentials (e.g. Meta Page Access Token or Telegram Bot Token).</li>
+          <li><code>connection_status</code>: <code>'connected'</code>, <code>'pending'</code>, or <code>'disconnected'</code>.</li>
+          <li><code>is_automated</code>: Boolean toggle to mute/unmute AI auto-replies.</li>
+        </ul>
+
+        <hr>
+
+        <h2>2. Platform Breakdowns</h2>
+        
+        <h3>🟢 Channel A: WhatsApp Business (Evolution API)</h3>
+        <p>WhatsApp integration is powered by the <strong>Evolution API</strong> (self-hosted external service running Node.js and the Baileys library).</p>
+        
+        <h4>Connection Flow</h4>
+        <ol>
+          <li><strong>Initiation:</strong> The merchant enters their phone number in Kasi Settings.</li>
+          <li><strong>Instance Creation:</strong> The backend <code>POST /api/whatsapp/connect</code> sends a command to the Evolution API to provision a new isolated WhatsApp instance:
+            <ul>
+              <li><strong>Endpoint:</strong> <code>POST {EVOLUTION_API_URL}/instance/create</code></li>
+              <li><strong>Webhook Subscription:</strong> The instance is initialized with the Kasi webhook URL (<code>{BASE_URL}/api/whatsapp/webhook</code>) registered to listen for <code>CONNECTION_UPDATE</code> and <code>MESSAGES_UPSERT</code>.</li>
+            </ul>
+          </li>
+          <li><strong>Pairing Code Generation:</strong> The backend polls the Evolution API endpoint:<br>
+            <code>GET {EVOLUTION_API_URL}/instance/connect/{instance_name}?number={phone_number}</code><br>
+            This returns an 8-character pairing code (e.g., <code>ABCD-1234</code>).
+          </li>
+          <li><strong>Linkage:</strong> The merchant inputs this pairing code into their WhatsApp app under <strong>Linked Devices</strong> -&gt; **Link with Phone Number**.</li>
+          <li><strong>Activation:</strong> The Evolution API triggers a <code>CONNECTION_UPDATE</code> webhook with status <code>'open'</code>. The backend captures this and updates the integration status in the DB to <code>connected</code>.</li>
+        </ol>
+
+        <h4>Webhook Message Flow (<code>POST /api/whatsapp/webhook</code>)</h4>
+        <ul>
+          <li><strong>Deduplication:</strong> Uses the <code>IdempotencyKey</code> table and memory cache (<code>PROCESSED_MESSAGES</code>) to prevent duplicate execution.</li>
+          <li><strong>Audio Transcription:</strong> If the message is a voice note (<code>audioMessage</code>), Kasi calls the media API, sends it to <strong>OpenAI Whisper</strong> or <strong>Groq Whisper</strong> for transcription, and prepends <code>🎤 [Voice Note]:</code>.</li>
+          <li><strong>Rider Delivery Interceptor:</strong> If the sender’s phone matches one of the vendor’s saved logistics riders, Kasi intercepts the chat. If the message says “Yes/Confirm”, it marks the invoice as “In Transit” and sends automatic notification updates to both the rider and customer.</li>
+          <li><strong>AI Processing:</strong> Routes text/images to <code>SalesAI.process</code> and <code>SalesAI.process_image</code>.</li>
+        </ul>
+
+        <h3>🔵 Channel B: Telegram Bots</h3>
+        <p>Telegram integrations use dedicated bots created via Telegram’s <code>@BotFather</code>.</p>
+        
+        <h4>Connection Flow</h4>
+        <ol>
+          <li><strong>Credential Entry:</strong> The merchant creates a bot on Telegram, obtains the Bot Token, and inputs it in Kasi Settings.</li>
+          <li><strong>Webhook Registration:</strong> Kasi calls the Telegram API to set our webhook route for their bot:<br>
+            <code>POST https://api.telegram.org/bot{token}/setWebhook?url={BASE_URL}/api/telegram/webhook/{token}</code>
+          </li>
+          <li><strong>Database Save:</strong> Saves the integration under platform <code>'telegram'</code> with `access_token = token`.</li>
+        </ol>
+
+        <h3>🟣 Channel C: Instagram Business DM & Facebook Messenger</h3>
+        <p>Meta messaging channels are handled via a single Meta Developer App using the Graph API and OAuth.</p>
+        
+        <div class="banner banner-info">
+          <div class="banner-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+          </div>
+          <div>
+            <strong>Frictionless OAuth:</strong> Kasi utilizes the official Facebook Dialog to retrieve user permissions. Vendors select their page and linked Instagram account, redirect back to Kasi, and are fully connected automatically.
+          </div>
+        </div>
+
+        <h4>Connection Flow (Frictionless OAuth)</h4>
+        <ol>
+          <li><strong>Authorization Request:</strong> The frontend redirects the user to Facebook’s OAuth URL:<br>
+            <code>https://www.facebook.com/v21.0/dialog/oauth?client_id={APP_ID}&amp;redirect_uri={FRONTEND_URL}/settings&amp;scope=pages_show_list,pages_messaging,instagram_basic,instagram_manage_messages,pages_read_engagement&amp;response_type=code&amp;state={platform}</code>
+          </li>
+          <li><strong>Facebook Redirect:</strong> Once authorized, Facebook redirects the merchant back to Kasi Settings:<br>
+            <code>https://usekasi.com/settings?code={auth_code}&amp;state={instagram|facebook}</code>
+          </li>
+          <li><strong>Code Exchange:</strong> The frontend grabs the <code>code</code> and calls:<br>
+            <code>POST /api/meta/oauth/callback</code>
+          </li>
+          <li><strong>Token Exchange:</strong> Backend calls Meta API to exchange the authorization code for a User Access Token.</li>
+          <li><strong>Page List Query:</strong> Backend calls <code>/me/accounts</code> to fetch Page ID and Page Access Tokens.</li>
+          <li><strong>Account Resolution:</strong> Kasi links either the Facebook Page ID or Instagram Business Account ID based on the requested platform.</li>
+        </ol>
+
+        <h4>Webhook Message Flow (<code>POST /api/meta/webhook</code>)</h4>
+        <ul>
+          <li><strong>Signature Verification:</strong> Validates `x-hub-signature-256` using `META_APP_SECRET`.</li>
+          <li><strong>Routing:</strong> Inspects `entry.messaging.recipient.id` (Page ID or Instagram Account ID) and queries `Integration` by `instance_name`.</li>
+          <li><strong>Response Dispatch:</strong> Calls Meta Graph API to send the reply:<br>
+            <code>POST https://graph.facebook.com/v21.0/me/messages?access_token={saved_page_access_token}</code>
+          </li>
+        </ul>
+        
+        <pre><code class="prism language-json">{
+  "recipient": {"id": "sender_id"},
+  "message": {"text": "AI response text here"}
+}</code></pre>
+
+        <hr>
+
+        <h2>3. Environment Variables Settings</h2>
+        <pre><code class="prism language-env"># Meta Graph API configuration
+META_APP_ID=2200339807370917
+META_APP_SECRET=a1ffb85471f2a414f66fbe03082c87c1
+META_VERIFY_TOKEN=kasi_ai_meta_verify_token_2026
+
+# Evolution API (WhatsApp) configuration
+EVOLUTION_API_URL=http://localhost:8080
+EVOLUTION_GLOBAL_API_KEY=kasi_secret_key_123
+
+# General config
+BASE_URL=https://api.usekasi.com</code></pre>
+      </article>
+
+      <!-- VPS Deployment Article -->
+      <article id="vps-deployment" class="doc-article">
+        <div class="article-meta">
+          <div class="meta-item">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+            <span>Reading time 5m</span>
+          </div>
+          <div class="meta-item">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+            <span>Updated Today</span>
+          </div>
+          <div class="meta-item">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24"/></svg>
+            <span>Level Intermediate</span>
+          </div>
+        </div>
+
+        <h1>Kasi AI Commerce Agent: VPS Production Deployment &amp; Migrations</h1>
+        <p>This guide outlines the exact, command-by-command steps required to stage, commit, push, deploy, and rebuild Kasi on your Hostinger VPS.</p>
+        
+        <h2>1. Production Architecture Overview</h2>
+        <p>Your live Hostinger VPS uses a containerized network. The database container (<code>kasi_db</code>) runs PostgreSQL on port <code>5432</code> and has <strong>no public port exposure</strong>. It is isolated inside the private Docker network (<code>kasi-network</code>).</p>
+        
+        <hr>
+
+        <h2>Step 1: Git Staging & Pushing (Local Machine)</h2>
+        <pre><code class="prism language-bash"># Check modified files
+git status
+
+# Stage all files
+git add .
+
+# Commit changes
+git commit -m "feat: complete meta integration webhook"
+
+# Push to GitHub
+git push origin main</code></pre>
+
+        <hr>
+
+        <h2>Step 2: Code Pulling & Deploying (VPS)</h2>
+        <pre><code class="prism language-bash"># SSH into your VPS
+ssh root@169.254.0.1
+
+# Navigate to backend directory
+cd ~/kasi-backend
+
+# Pull latest updates
+git pull origin main
+
+# Force-rebuild and recreate docker containers
+docker compose up -d --build --force-recreate</code></pre>
+
+        <div class="banner banner-warning">
+          <div class="banner-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24"/></svg>
+          </div>
+          <div>
+            <strong>Rebuild vs Recreate:</strong> The <code>--build</code> flag recompiles the Dockerfiles to fetch new python packages. The <code>--force-recreate</code> flag ensures all environment variables in <code>.env</code> are fully reloaded.
+          </div>
+        </div>
+
+        <hr>
+
+        <h2>Step 3: Database Migration Pipeline (VPS)</h2>
+        <p>Migrations are executed inside the flask container:</p>
+        <pre><code class="prism language-bash"># Standard upgrade
+docker compose exec kasi-backend flask db upgrade
+
+# Check active migration version
+docker compose exec kasi-backend flask db current
+
+# Stamp database to direct version if diverged
+docker compose exec kasi-backend flask db stamp rcwknn8bhoai</code></pre>
+
+        <hr>
+
+        <h2>Step 4: Querying Live PostgreSQL Records Directly</h2>
+        <pre><code class="prism language-bash"># Log in to database console
+docker exec -it kasi_db psql -U kasi_user -d kasi_production</code></pre>
+        
+        <p>Useful commands:</p>
+        <ul>
+          <li><code>\dt</code> - list all tables</li>
+          <li><code>SELECT id, business_name, kasi_credits FROM users;</code> - view credits</li>
+          <li><code>\q</code> - exit postgres console</li>
+        </ul>
+      </article>
+    </main>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
