@@ -342,7 +342,7 @@
         <h4>Connection Flow (OAuth)</h4>
         <ol>
           <li><strong>Authorization Request:</strong> Frontend redirects to Facebook's OAuth URL:<br>
-            <code>https://www.facebook.com/v21.0/dialog/oauth?client_id={APP_ID}&amp;redirect_uri={FRONTEND_URL}/settings&amp;scope=pages_show_list,pages_messaging,instagram_basic,instagram_manage_messages,pages_read_engagement&amp;response_type=code&amp;state={platform}</code>
+            <code>https://www.facebook.com/v21.0/dialog/oauth?client_id={APP_ID}&amp;redirect_uri={FRONTEND_URL}/settings&amp;scope=pages_show_list,pages_messaging,pages_manage_metadata,instagram_basic,instagram_manage_messages,pages_read_engagement&amp;response_type=code&amp;state={platform}</code>
           </li>
           <li><strong>Facebook Redirect:</strong> After authorization, Facebook redirects back:<br>
             <code>https://usekasi.com/settings?code={auth_code}&amp;state={instagram|facebook}</code>
@@ -367,7 +367,7 @@
           <li><strong>Routing:</strong> Inspects <code>entry.messaging.recipient.id</code> → queries <code>Integration</code> by <code>instance_name</code>.</li>
           <li><strong>Image Support:</strong> CDN URLs fetched, converted to base64, passed to <code>SalesAI.process_image</code>.</li>
           <li><strong>Response Dispatch:</strong><br>
-            <code>POST https://graph.facebook.com/v21.0/me/messages?access_token={page_access_token}</code>
+            <code>POST https://graph.facebook.com/v21.0/me/messages?access_token={page_access_token}</code> for Facebook Messenger, or <code>POST https://graph.facebook.com/v21.0/{ig_business_account_id}/messages?access_token={page_access_token}</code> for Instagram DMs.
           </li>
         </ul>
 

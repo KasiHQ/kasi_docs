@@ -76,7 +76,7 @@ This returns an 8-character pairing code (e.g., <code>ABCD-1234</code>).</li>
 <h4 id="connection-flow-frictionless-oauth">1. Connection Flow (Frictionless OAuth)</h4>
 <ol>
 <li><strong>Authorization Request:</strong> The frontend redirects the user to Facebook’s OAuth URL:<br>
-<code>https://www.facebook.com/v21.0/dialog/oauth?client_id={APP_ID}&amp;redirect_uri={FRONTEND_URL}/settings&amp;scope=pages_show_list,pages_messaging,instagram_basic,instagram_manage_messages,pages_read_engagement&amp;response_type=code&amp;state={platform}</code></li>
+<code>https://www.facebook.com/v21.0/dialog/oauth?client_id={APP_ID}&amp;redirect_uri={FRONTEND_URL}/settings&amp;scope=pages_show_list,pages_messaging,pages_manage_metadata,instagram_basic,instagram_manage_messages,pages_read_engagement&amp;response_type=code&amp;state={platform}</code></li>
 <li><strong>Facebook Redirect:</strong> Once authorized, Facebook redirects the merchant back to Kasi Settings:<br>
 <code>https://usekasi.com/settings?code={auth_code}&amp;state={instagram|facebook}</code></li>
 <li><strong>Code Exchange:</strong> The frontend grabs the <code>code</code> and calls:<br>
@@ -100,7 +100,7 @@ If a linked Instagram Business Account is found, Kasi saves the Instagram Accoun
 <li><strong>Image/Vision Support:</strong> If image attachments are present, Kasi calls the CDN URL provided by Meta, converts the image bytes to a base64 string, and passes it to <code>SalesAI.process_image</code>.</li>
 <li><strong>Standard DMs:</strong> Text is routed directly to <code>SalesAI.process</code>.</li>
 <li><strong>Response Dispatch:</strong> Kasi sends the reply via Graph API:<br>
-<code>POST https://graph.facebook.com/v21.0/me/messages?access_token={saved_page_access_token}</code><br>
+<code>POST https://graph.facebook.com/v21.0/me/messages?access_token={saved_page_access_token}</code> for Facebook Messenger, or <code>POST https://graph.facebook.com/v21.0/{ig_business_account_id}/messages?access_token={saved_page_access_token}</code> for Instagram DMs.<br>
 Payload format:<pre class=" language-json"><code class="prism  language-json"><span class="token punctuation">{</span>
   <span class="token string">"recipient"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"id"</span><span class="token punctuation">:</span> <span class="token string">"sender_id"</span><span class="token punctuation">}</span><span class="token punctuation">,</span>
   <span class="token string">"message"</span><span class="token punctuation">:</span> <span class="token punctuation">{</span><span class="token string">"text"</span><span class="token punctuation">:</span> <span class="token string">"AI response text here"</span><span class="token punctuation">}</span>
